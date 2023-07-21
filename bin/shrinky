@@ -1,0 +1,22 @@
+#!/bin/bash
+
+set -eu
+here=$(dirname $0 | xargs readlink -f)
+
+ds="$1"
+shift
+paths=( "$@" )
+datalad create "$ds-selected"
+cd "$ds-selected"
+datalad clone -d . "///openneuro/$ds" sourcedata
+# TODO: get spec folders like sub-01/{anat,func} and use it in two places:
+# 1. copy as is with all leading folder paths
+datalad -C sourcedata run -d "$PWD" -m "Copy desired stuff here"  "$here/copy-files-upstairs" "${paths[@]}" # param: paths
+# 2. create the filtered git-annex branch with those paths only
+state_hexsha=$(git -C sourcedata/ annex filter-branch --exclude-repo-config-for=here --include-all-key-information --include-all-repo-config "${paths[@]}")  # param: paths
+git fetch sourcedata "${state_hexsha}:copy-file-tmp/git-annex"
+git annex merge
+git branch -D copy-file-tmp/git-annex
+# autoenable autoenableable remotes
+git show git-annex:remote.log | awk '/autoenable=true/{print $1;}' | xargs -n1 git annex enableremote
+

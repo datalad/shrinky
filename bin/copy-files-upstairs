@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -eu
+
+for f in "$@"; do
+    upf="../$(dirname "$f")"
+    mkdir -p "$upf"
+    cp -rp "$f" "$upf"
+done
